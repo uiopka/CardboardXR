@@ -26,6 +26,13 @@ jobs:
             --yes
           unity editors
 
+      - name: Activate Unity license
+        uses: game-ci/unity-activate@v2
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+
       - name: Build Xcode project via Unity batchmode
         shell: bash
         run: |
@@ -51,12 +58,19 @@ jobs:
           find build -maxdepth 5 -name "*.xcodeproj" -print
           test -d build/ios/Unity-iPhone.xcodeproj
 
+      - name: Copy Unity Editor log
+        if: always()
+        shell: bash
+        run: |
+          mkdir -p build/logs
+          if [ -f "$HOME/Library/Logs/Unity/Editor.log" ]; then
+            cp "$HOME/Library/Logs/Unity/Editor.log" build/logs/Editor.log
+          fi
+
       - name: Upload Unity logs
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: unity-logs
-          path: |
-            ~/Library/Logs/Unity/Editor.log
-            build/**
+          path: build/**
           if-no-files-found: warn
