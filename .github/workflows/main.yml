@@ -10,16 +10,20 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install Unity Hub & Unity 6000.6.8f1 (iOS)
+      - name: Install Unity CLI & Unity 6000.6.8f1 (iOS)
         run: |
-          brew install --cask unity-hub
-          UNITY_HUB="/Applications/Unity Hub.app/Contents/MacOS/Unity Hub"
-          "$UNITY_HUB" -- --headless install --version 6000.6.8f1 --changeset 237b6593792b --module ios
+          curl -fsSL https://unity.com/install.sh | bash
+          export PATH="$HOME/.unity/bin:$HOME/.local/bin:$PATH"
+          UNITY_CMD=$(command -v unity || find / -name "unity" -type f -perm +111 2>/dev/null | grep -E "unity-cli|unity" | head -n 1)
+          echo "Using Unity CLI: $UNITY_CMD"
+          "$UNITY_CMD" install --version 6000.6.8f1 --changeset 237b6593792b --module ios
 
       - name: Build Xcode project via Unity batchmode
         run: |
           mkdir -p build/ios
-          "/Applications/Unity/Hub/Editor/6000.6.8f1/Unity.app/Contents/MacOS/Unity" \
+          UNITY_BIN=$(find /Applications /Users -name "Unity" -type f -path "*/Unity.app/Contents/MacOS/Unity" 2>/dev/null | head -n 1)
+          echo "Using Unity Editor: $UNITY_BIN"
+          "$UNITY_BIN" \
             -batchmode \
             -nographics \
             -quit \
