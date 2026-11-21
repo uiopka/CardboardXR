@@ -13,21 +13,38 @@ jobs:
       - name: Install Unity Hub & Unity 6000.6.8f1 (iOS)
         run: |
           brew install --cask unity-hub
-          echo "Проверь версию в ProjectSettings/ProjectVersion.txt и при необходимости поставь нужный редактор с модулем ios"
+          UNITY_HUB="/Applications/Unity Hub.app/Contents/MacOS/Unity Hub"
+          "$UNITY_HUB" -- --headless install --version 6000.6.8f1 --changeset 237b6593792b --module ios
 
       - name: Build Xcode project via Unity batchmode
         run: |
-          mkdir -p ./build/ios
-          echo "Запуск Unity в -batchmode -nographics -buildTarget iOS в ./build/ios"
+          mkdir -p build/ios
+          "/Applications/Unity/Hub/Editor/6000.6.8f1/Unity.app/Contents/MacOS/Unity" \
+            -batchmode \
+            -nographics \
+            -quit \
+            -projectPath "$GITHUB_WORKSPACE" \
+            -executeMethod BuildIOS.Build \
+            -logFile "$GITHUB_WORKSPACE/build/unity-ios.log"
 
-      - name: Archive and export unsigned IPA
+      - name: Archive Xcode project
         run: |
-          mkdir -p ./output
-          ls -la ./build/ios || true
+          mkdir -p build/archive build/output
+          XCODE_PROJ=$(find build/ios -maxdepth 2 -name "Unity-iPhone.xcodeproj" | head -n 1)
+          echo "Found project: $XCODE_PROJ"
+          xcodebuild -project "$XCODE_PROJ" \
+            -scheme Unity-iPhone \
+            -configuration Release \
+            -sdk iphoneos \
+            -archivePath build/archive/CardboardXR.xcarchive \
+            archive \
+            CODE_SIGNING_ALLOWED=NO
 
-      - name: Upload IPA artifact
+      - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: CardboardXR-iOS-IPA
-          path: ./output/*.ipa
+          name: CardboardXR-iOS-Build
+          path: |
+            build/archive/**
+            build/unity-ios.log
           if-no-files-found: ignore
