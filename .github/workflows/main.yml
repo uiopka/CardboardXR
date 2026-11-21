@@ -1,53 +1,25 @@
-name: Build CardboardXR iOS IPA
+- name: Build Xcode project via Unity batchmode
+  shell: bash
+  run: |
+    set -o pipefail
+    mkdir -p build/ios
+    UNITY_BIN=$(find /Applications /Users -path "*/Unity.app/Contents/MacOS/Unity" -type f 2>/dev/null | head -n 1)
+    test -n "$UNITY_BIN" || { echo "Unity Editor not found"; exit 1; }
+    echo "Using Unity Editor: $UNITY_BIN"
+    "$UNITY_BIN" \
+      -batchmode \
+      -nographics \
+      -quit \
+      -projectPath "$GITHUB_WORKSPACE" \
+      -executeMethod BuildIOS.Build \
+      -logFile -
 
-on:
-  workflow_dispatch:
-
-jobs:
-  build-ios:
-    runs-on: macos-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Install Unity CLI & Unity 6000.6.8f1 (iOS)
-        run: |
-          curl -fsSL https://unity.com/install.sh | bash
-          export PATH="$HOME/.unity/bin:$HOME/.local/bin:$PATH"
-          unity install -c 237b6593792b -m ios --accept-eula --non-interactive --yes 6000.6.8f1
-          unity editors
-
-      - name: Build Xcode project via Unity batchmode
-        run: |
-          mkdir -p build/ios
-          UNITY_BIN=$(find /Applications /Users -name "Unity" -type f -path "*/Unity.app/Contents/MacOS/Unity" 2>/dev/null | head -n 1)
-          echo "Using Unity Editor: $UNITY_BIN"
-          "$UNITY_BIN" \
-            -batchmode \
-            -nographics \
-            -quit \
-            -projectPath "$GITHUB_WORKSPACE" \
-            -executeMethod BuildIOS.Build \
-            -logFile "$GITHUB_WORKSPACE/build/unity-ios.log"
-
-      - name: Archive Xcode project
-        run: |
-          mkdir -p build/archive build/output
-          XCODE_PROJ=$(find build/ios -maxdepth 2 -name "Unity-iPhone.xcodeproj" | head -n 1)
-          echo "Found project: $XCODE_PROJ"
-          xcodebuild -project "$XCODE_PROJ" \
-            -scheme Unity-iPhone \
-            -configuration Release \
-            -sdk iphoneos \
-            -archivePath build/archive/CardboardXR.xcarchive \
-            archive \
-            CODE_SIGNING_ALLOWED=NO
-
-      - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: CardboardXR-iOS-Build
-          path: |
-            build/archive/**
-            build/unity-ios.log
-          if-no-files-found: ignore
+- name: Upload Unity logs
+  if: always()
+  uses: actions/upload-artifact@v4
+  with:
+    name: unity-logs
+    path: |
+      ~/Library/Logs/Unity/Editor.log
+      build/**
+    if-no-files-found: warn
