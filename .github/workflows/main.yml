@@ -26,16 +26,16 @@ jobs:
             --yes
           unity editors
 
-      - name: Install Unity license
+      - name: Activate Unity license
         shell: bash
         env:
           UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
         run: |
           test -n "$UNITY_LICENSE" || { echo "UNITY_LICENSE secret is missing"; exit 1; }
-          sudo mkdir -p "/Library/Application Support/Unity"
-          printf '%s' "$UNITY_LICENSE" \
-            | sudo tee "/Library/Application Support/Unity/Unity_lic.ulf" >/dev/null
-          sudo chmod 644 "/Library/Application Support/Unity/Unity_lic.ulf"
+          LICENSE_FILE="$RUNNER_TEMP/Unity_lic.ulf"
+          printf '%s' "$UNITY_LICENSE" > "$LICENSE_FILE"
+          unity license activate --file "$LICENSE_FILE"
+          unity license status
 
       - name: Build Xcode project via Unity batchmode
         shell: bash
@@ -53,7 +53,7 @@ jobs:
             -quit \
             -projectPath "$GITHUB_WORKSPACE" \
             -executeMethod BuildIOS.Build \
-            -logFile -
+            -logFile "$GITHUB_WORKSPACE/build/unity-ios.log"
 
       - name: Check generated Xcode project
         if: success()
